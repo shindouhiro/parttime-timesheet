@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { createInitialTimesheet } from '../../data/initialTimesheet'
 import { buildExcelWorkbook } from '../excelExport'
 import { parseExcelBufferToTimesheet } from '../excelImport'
+import { parseJsonToTimesheet, serializeTimesheetToJson } from '../jsonTransfer'
+import { parseMarkdownToTimesheet, serializeTimesheetToMarkdown } from '../markdownTransfer'
 import { calcAutoHours, getEffectiveHours, parseTimeToMinutes } from '../timeCalc'
 
 describe('timeCalc', () => {
@@ -68,5 +70,34 @@ describe('excelExport', () => {
     expect(imported.records[0].endTime).toBe('20:30')
     expect(imported.reviewItems).toHaveLength(initial.reviewItems.length)
     expect(imported.extraReviewItems).toHaveLength(initial.extraReviewItems.length)
+  })
+})
+
+describe('jsonTransfer & markdownTransfer', () => {
+  it('round-trips TimesheetWorkbook through JSON', () => {
+    const initial = createInitialTimesheet()
+    const json = serializeTimesheetToJson(initial)
+    const parsed = parseJsonToTimesheet(json)
+
+    expect(parsed.month).toBe(initial.month)
+    expect(parsed.records).toHaveLength(initial.records.length)
+    expect(parsed.records[0].content).toBe(initial.records[0].content)
+    expect(parsed.reviewItems).toHaveLength(initial.reviewItems.length)
+  })
+
+  it('round-trips TimesheetWorkbook through Markdown preserving newlines and pipes', () => {
+    const initial = createInitialTimesheet()
+    initial.records[0].basis = '按提交记录 | 核对'
+    const md = serializeTimesheetToMarkdown(initial)
+    expect(md).toContain('# 工作记录表')
+    expect(md).toContain('| 2026-11-10 | 09:30 | 20:30 | 9.5 |')
+
+    const parsed = parseMarkdownToTimesheet(md)
+    expect(parsed.month).toBe(11)
+    expect(parsed.records).toHaveLength(initial.records.length)
+    expect(parsed.records[0].content).toBe(initial.records[0].content)
+    expect(parsed.records[0].basis).toBe('按提交记录 | 核对')
+    expect(parsed.reviewItems).toHaveLength(initial.reviewItems.length)
+    expect(parsed.extraReviewItems).toHaveLength(initial.extraReviewItems.length)
   })
 })

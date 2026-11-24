@@ -239,13 +239,56 @@ export function useTimesheet() {
     }
   }
 
-  async function importExcelFile(file: File) {
+  async function exportJson() {
+    if (isExporting.value) return
+    isExporting.value = true
+    try {
+      const { downloadTimesheetJson } = await import('../utils/jsonTransfer')
+      const filename = downloadTimesheetJson(workbook.value)
+      showToast(`已导出 ${filename}`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '导出失败'
+      showToast(`导出失败：${msg}`, 'error')
+    } finally {
+      isExporting.value = false
+    }
+  }
+
+  async function exportMarkdown() {
+    if (isExporting.value) return
+    isExporting.value = true
+    try {
+      const { downloadTimesheetMarkdown } = await import('../utils/markdownTransfer')
+      const filename = downloadTimesheetMarkdown(workbook.value)
+      showToast(`已导出 ${filename}`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '导出失败'
+      showToast(`导出失败：${msg}`, 'error')
+    } finally {
+      isExporting.value = false
+    }
+  }
+
+  async function importFile(file: File) {
     if (isImporting.value) return
     isImporting.value = true
     try {
-      const buffer = await file.arrayBuffer()
-      const { parseExcelBufferToTimesheet } = await import('../utils/excelImport')
-      workbook.value = await parseExcelBufferToTimesheet(buffer)
+      const lower = file.name.toLowerCase()
+      if (lower.endsWith('.json')) {
+        const text = await file.text()
+        const { parseJsonToTimesheet } = await import('../utils/jsonTransfer')
+        workbook.value = parseJsonToTimesheet(text)
+      } else if (lower.endsWith('.md') || lower.endsWith('.markdown')) {
+        const text = await file.text()
+        const { parseMarkdownToTimesheet } = await import('../utils/markdownTransfer')
+        workbook.value = parseMarkdownToTimesheet(text)
+      } else if (lower.endsWith('.xlsx')) {
+        const buffer = await file.arrayBuffer()
+        const { parseExcelBufferToTimesheet } = await import('../utils/excelImport')
+        workbook.value = await parseExcelBufferToTimesheet(buffer)
+      } else {
+        throw new Error('仅支持 .xlsx、.json 或 .md 文件')
+      }
       searchQuery.value = ''
       showToast(`已导入 ${file.name}`)
     } catch (err) {
@@ -282,6 +325,8 @@ export function useTimesheet() {
     resetToInitial,
     saveNow,
     exportExcel,
-    importExcelFile,
+    exportJson,
+    exportMarkdown,
+    importFile,
   }
 }

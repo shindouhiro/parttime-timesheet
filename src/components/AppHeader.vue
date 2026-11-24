@@ -1,6 +1,18 @@
 <script setup lang="ts">
-import { useTemplateRef } from 'vue'
-import { Check, Download, FileSpreadsheet, Plus, RotateCcw, Save, Search, Upload } from 'lucide-vue-next'
+import { onMounted, onUnmounted, shallowRef, useTemplateRef } from 'vue'
+import {
+  Check,
+  ChevronDown,
+  Download,
+  FileCode2,
+  FileSpreadsheet,
+  FileText,
+  Plus,
+  RotateCcw,
+  Save,
+  Search,
+  Upload,
+} from 'lucide-vue-next'
 
 interface Props {
   title: string
@@ -25,23 +37,79 @@ const emit = defineEmits<{
   requestReset: []
   saveNow: []
   exportExcel: []
-  importExcel: [file: File]
+  exportJson: []
+  exportMarkdown: []
+  importFile: [file: File]
 }>()
 
-const fileInputRef = useTemplateRef<HTMLInputElement>('excelFileInput')
+const fileInputRef = useTemplateRef<HTMLInputElement>('importFileInput')
+const importMenuRef = useTemplateRef<HTMLDivElement>('importMenuContainer')
+const exportMenuRef = useTemplateRef<HTMLDivElement>('exportMenuContainer')
 
-function triggerImport() {
-  fileInputRef.value?.click()
+const isImportMenuOpen = shallowRef(false)
+const isExportMenuOpen = shallowRef(false)
+const fileAccept = shallowRef('.xlsx,.json,.md,.markdown')
+
+function openFilePicker(accept: string) {
+  fileAccept.value = accept
+  isImportMenuOpen.value = false
+  requestAnimationFrame(() => {
+    fileInputRef.value?.click()
+  })
 }
 
 function handleFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (file) {
-    emit('importExcel', file)
+    emit('importFile', file)
     input.value = ''
   }
 }
+
+function toggleImportMenu() {
+  isImportMenuOpen.value = !isImportMenuOpen.value
+  if (isImportMenuOpen.value) isExportMenuOpen.value = false
+}
+
+function toggleExportMenu() {
+  isExportMenuOpen.value = !isExportMenuOpen.value
+  if (isExportMenuOpen.value) isImportMenuOpen.value = false
+}
+
+function handleExportAction(type: 'excel' | 'json' | 'md') {
+  isExportMenuOpen.value = false
+  if (type === 'excel') emit('exportExcel')
+  else if (type === 'json') emit('exportJson')
+  else emit('exportMarkdown')
+}
+
+function handleDocumentClick(e: MouseEvent) {
+  const target = e.target as Node
+  if (importMenuRef.value && !importMenuRef.value.contains(target)) {
+    isImportMenuOpen.value = false
+  }
+  if (exportMenuRef.value && !exportMenuRef.value.contains(target)) {
+    isExportMenuOpen.value = false
+  }
+}
+
+function handleEscape(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    isImportMenuOpen.value = false
+    isExportMenuOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleDocumentClick)
+  document.addEventListener('keydown', handleEscape)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleDocumentClick)
+  document.removeEventListener('keydown', handleEscape)
+})
 </script>
 
 <template>
@@ -63,13 +131,13 @@ function handleFileChange(event: Event) {
               </span>
             </div>
             <p class="text-xs text-slate-500 mt-0.5">
-              支持在线编辑、自动计算工时（默认扣除午休 {{ props.breakHours }} 小时），并导出标准 Excel (.xlsx)
+              支持在线编辑、自动计算工时（默认扣除午休 {{ props.breakHours }} 小时），并支持 Excel / JSON / Markdown 导入导出
             </p>
           </div>
         </div>
 
         <!-- KPI Summary & Controls -->
-        <div class="flex flex-wrap items-center gap-2.5">
+        <div class="flex flex-wrap items-center gap-2">
           <!-- KPI Pills -->
           <div class="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs">
             <div>
@@ -88,81 +156,172 @@ function handleFileChange(event: Event) {
             </div>
           </div>
 
-          <!-- Month & Break Config -->
-          <div class="flex items-center gap-2">
+          <!-- Month Selector -->
+          <div class="flex items-center gap-1.5">
             <label for="month-select" class="text-xs font-medium text-slate-600">月份</label>
             <select
               id="month-select"
               :value="props.month"
-              class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 shadow-xs focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-800 shadow-xs focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               @change="emit('update:month', Number(($event.target as HTMLSelectElement).value))"
             >
               <option v-for="m in 12" :key="m" :value="m">{{ m }} 月</option>
             </select>
           </div>
 
-          <!-- Action Buttons -->
+          <!-- Add Record -->
           <button
             id="btn-add-record"
             type="button"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
             @click="emit('addRecord')"
           >
             <Plus class="h-3.5 w-3.5" />
-            新增记录
+            新增
           </button>
 
-          <button
-            id="btn-import-excel"
-            type="button"
-            :disabled="props.isImporting"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 disabled:opacity-60"
-            @click="triggerImport"
-          >
-            <Upload class="h-3.5 w-3.5" />
-            {{ props.isImporting ? '导入中...' : '导入 Excel' }}
-          </button>
-          <input
-            id="input-import-excel"
-            ref="excelFileInput"
-            type="file"
-            accept=".xlsx"
-            class="hidden"
-            aria-label="导入 Excel 文件"
-            @change="handleFileChange"
-          />
-
-          <button
-            id="btn-reset-data"
-            type="button"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-xs transition hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-            @click="emit('requestReset')"
-          >
-            <RotateCcw class="h-3.5 w-3.5" />
-            重置初始
-          </button>
-
+          <!-- Manual Save -->
           <button
             id="btn-manual-save"
             type="button"
             title="立即保存到浏览器本地 (Ctrl/Cmd + S)"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 shadow-xs transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 shadow-xs transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
             @click="emit('saveNow')"
           >
             <Save class="h-3.5 w-3.5" />
             保存
           </button>
 
+          <!-- Import Dropdown -->
+          <div ref="importMenuContainer" class="relative">
+            <button
+              id="btn-import-menu"
+              type="button"
+              :disabled="props.isImporting"
+              aria-haspopup="menu"
+              :aria-expanded="isImportMenuOpen"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 disabled:opacity-60"
+              @click="toggleImportMenu"
+            >
+              <Upload class="h-3.5 w-3.5" />
+              {{ props.isImporting ? '导入中...' : '导入' }}
+              <ChevronDown class="h-3 w-3 text-slate-400" />
+            </button>
+
+            <div
+              v-if="isImportMenuOpen"
+              role="menu"
+              aria-label="选择导入格式"
+              class="absolute right-0 mt-1.5 w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-lg z-30"
+            >
+              <button
+                id="menu-import-xlsx"
+                type="button"
+                role="menuitem"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                @click="openFilePicker('.xlsx')"
+              >
+                <FileSpreadsheet class="h-3.5 w-3.5 text-emerald-600" />
+                导入 Excel (.xlsx)
+              </button>
+              <button
+                id="menu-import-json"
+                type="button"
+                role="menuitem"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                @click="openFilePicker('.json')"
+              >
+                <FileCode2 class="h-3.5 w-3.5 text-sky-600" />
+                导入 JSON (.json)
+              </button>
+              <button
+                id="menu-import-md"
+                type="button"
+                role="menuitem"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+                @click="openFilePicker('.md,.markdown')"
+              >
+                <FileText class="h-3.5 w-3.5 text-violet-600" />
+                导入 Markdown (.md)
+              </button>
+            </div>
+
+            <input
+              id="input-import-file"
+              ref="importFileInput"
+              type="file"
+              :accept="fileAccept"
+              class="hidden"
+              aria-label="导入文件"
+              @change="handleFileChange"
+            />
+          </div>
+
+          <!-- Reset -->
           <button
-            id="btn-export-excel"
+            id="btn-reset-data"
             type="button"
-            :disabled="props.isExporting"
-            class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 disabled:opacity-60"
-            @click="emit('exportExcel')"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-xs transition hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+            @click="emit('requestReset')"
           >
-            <Download class="h-3.5 w-3.5" />
-            {{ props.isExporting ? '正在生成...' : '下载 Excel' }}
+            <RotateCcw class="h-3.5 w-3.5" />
+            重置
           </button>
+
+          <!-- Export Dropdown -->
+          <div ref="exportMenuContainer" class="relative">
+            <button
+              id="btn-export-menu"
+              type="button"
+              :disabled="props.isExporting"
+              aria-haspopup="menu"
+              :aria-expanded="isExportMenuOpen"
+              class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1 disabled:opacity-60"
+              @click="toggleExportMenu"
+            >
+              <Download class="h-3.5 w-3.5" />
+              {{ props.isExporting ? '导出中...' : '导出' }}
+              <ChevronDown class="h-3 w-3 opacity-80" />
+            </button>
+
+            <div
+              v-if="isExportMenuOpen"
+              role="menu"
+              aria-label="选择导出格式"
+              class="absolute right-0 mt-1.5 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg z-30"
+            >
+              <button
+                id="menu-export-xlsx"
+                type="button"
+                role="menuitem"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-800 hover:bg-emerald-50 hover:text-emerald-800"
+                @click="handleExportAction('excel')"
+              >
+                <FileSpreadsheet class="h-3.5 w-3.5 text-emerald-600" />
+                导出为 Excel (.xlsx)
+              </button>
+              <button
+                id="menu-export-json"
+                type="button"
+                role="menuitem"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-800 hover:bg-sky-50 hover:text-sky-800"
+                @click="handleExportAction('json')"
+              >
+                <FileCode2 class="h-3.5 w-3.5 text-sky-600" />
+                导出为 JSON (.json)
+              </button>
+              <button
+                id="menu-export-md"
+                type="button"
+                role="menuitem"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-800 hover:bg-violet-50 hover:text-violet-800"
+                @click="handleExportAction('md')"
+              >
+                <FileText class="h-3.5 w-3.5 text-violet-600" />
+                转换为 Markdown (.md)
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

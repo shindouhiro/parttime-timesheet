@@ -32,7 +32,9 @@ const {
   resetToInitial,
   saveNow,
   exportExcel,
-  importExcelFile,
+  exportJson,
+  exportMarkdown,
+  importFile,
 } = useTimesheet()
 
 const isResetDialogOpen = shallowRef(false)
@@ -78,7 +80,9 @@ function handleConfirmReset() {
       @request-reset="isResetDialogOpen = true"
       @save-now="saveNow"
       @export-excel="exportExcel"
-      @import-excel="importExcelFile"
+      @export-json="exportJson"
+      @export-markdown="exportMarkdown"
+      @import-file="importFile"
     />
 
     <SheetTabs
