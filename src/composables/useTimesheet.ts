@@ -207,6 +207,17 @@ export function useTimesheet() {
     showToast('已删除复核事项')
   }
 
+  function saveNow() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(workbook.value))
+      const nowStr = formatNowTime()
+      lastSavedAt.value = nowStr
+      showToast(`已保存至本地 (${nowStr})`)
+    } catch {
+      showToast('保存失败：浏览器本地存储空间不足或被禁用', 'error')
+    }
+  }
+
   function resetToInitial() {
     workbook.value = createInitialTimesheet()
     searchQuery.value = ''
@@ -269,6 +280,7 @@ export function useTimesheet() {
     duplicateReviewItem,
     removeReviewItem,
     resetToInitial,
+    saveNow,
     exportExcel,
     importExcelFile,
   }

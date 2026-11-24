@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { shallowRef } from 'vue'
+import { onMounted, onUnmounted, shallowRef } from 'vue'
 import { CheckCircle2, AlertTriangle } from 'lucide-vue-next'
 import AppHeader from './components/AppHeader.vue'
 import ReviewSheetTable from './components/ReviewSheetTable.vue'
@@ -30,11 +30,27 @@ const {
   duplicateReviewItem,
   removeReviewItem,
   resetToInitial,
+  saveNow,
   exportExcel,
   importExcelFile,
 } = useTimesheet()
 
 const isResetDialogOpen = shallowRef(false)
+
+function handleKeydown(e: KeyboardEvent) {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault()
+    saveNow()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 
 function handleConfirmReset() {
   resetToInitial()
@@ -60,6 +76,7 @@ function handleConfirmReset() {
       @update:search-query="searchQuery = $event"
       @add-record="addWorkRecord"
       @request-reset="isResetDialogOpen = true"
+      @save-now="saveNow"
       @export-excel="exportExcel"
       @import-excel="importExcelFile"
     />

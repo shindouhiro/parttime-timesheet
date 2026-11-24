@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTemplateRef } from 'vue'
-import { Check, Download, FileSpreadsheet, Plus, RotateCcw, Search, Upload } from 'lucide-vue-next'
+import { Check, Download, FileSpreadsheet, Plus, RotateCcw, Save, Search, Upload } from 'lucide-vue-next'
 
 interface Props {
   title: string
@@ -23,6 +23,7 @@ const emit = defineEmits<{
   'update:searchQuery': [val: string]
   addRecord: []
   requestReset: []
+  saveNow: []
   exportExcel: []
   importExcel: [file: File]
 }>()
@@ -139,6 +140,17 @@ function handleFileChange(event: Event) {
           >
             <RotateCcw class="h-3.5 w-3.5" />
             重置初始
+          </button>
+
+          <button
+            id="btn-manual-save"
+            type="button"
+            title="立即保存到浏览器本地 (Ctrl/Cmd + S)"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 shadow-xs transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            @click="emit('saveNow')"
+          >
+            <Save class="h-3.5 w-3.5" />
+            保存
           </button>
 
           <button
