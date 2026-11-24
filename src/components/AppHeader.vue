@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Download, FileSpreadsheet, Plus, RotateCcw, Search } from 'lucide-vue-next'
+import { useTemplateRef } from 'vue'
+import { Check, Download, FileSpreadsheet, Plus, RotateCcw, Search, Upload } from 'lucide-vue-next'
 
 interface Props {
   title: string
@@ -10,6 +11,8 @@ interface Props {
   avgDailyHours: number
   searchQuery: string
   isExporting: boolean
+  isImporting: boolean
+  lastSavedAt: string
 }
 
 const props = defineProps<Props>()
@@ -21,7 +24,23 @@ const emit = defineEmits<{
   addRecord: []
   requestReset: []
   exportExcel: []
+  importExcel: [file: File]
 }>()
+
+const fileInputRef = useTemplateRef<HTMLInputElement>('excelFileInput')
+
+function triggerImport() {
+  fileInputRef.value?.click()
+}
+
+function handleFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    emit('importExcel', file)
+    input.value = ''
+  }
+}
 </script>
 
 <template>
@@ -93,6 +112,26 @@ const emit = defineEmits<{
           </button>
 
           <button
+            id="btn-import-excel"
+            type="button"
+            :disabled="props.isImporting"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 disabled:opacity-60"
+            @click="triggerImport"
+          >
+            <Upload class="h-3.5 w-3.5" />
+            {{ props.isImporting ? '导入中...' : '导入 Excel' }}
+          </button>
+          <input
+            id="input-import-excel"
+            ref="excelFileInput"
+            type="file"
+            accept=".xlsx"
+            class="hidden"
+            aria-label="导入 Excel 文件"
+            @change="handleFileChange"
+          />
+
+          <button
             id="btn-reset-data"
             type="button"
             class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-xs transition hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
@@ -141,7 +180,10 @@ const emit = defineEmits<{
             class="w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-center text-xs font-medium text-slate-800 tabular-nums focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             @input="emit('update:breakHours', Number(($event.target as HTMLInputElement).value) || 0)"
           />
-          <span class="hidden sm:inline text-slate-400">自动保存至本地浏览器</span>
+          <span class="inline-flex items-center gap-1 text-emerald-700">
+            <Check class="h-3.5 w-3.5" />
+            {{ props.lastSavedAt ? `已自动保存 (${props.lastSavedAt})` : '已启用本地自动保存' }}
+          </span>
         </div>
       </div>
     </div>

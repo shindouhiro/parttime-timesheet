@@ -12,6 +12,8 @@ const {
   activeTab,
   searchQuery,
   isExporting,
+  isImporting,
+  lastSavedAt,
   toastMessage,
   toastType,
   totalHours,
@@ -29,6 +31,7 @@ const {
   removeReviewItem,
   resetToInitial,
   exportExcel,
+  importExcelFile,
 } = useTimesheet()
 
 const isResetDialogOpen = shallowRef(false)
@@ -50,12 +53,15 @@ function handleConfirmReset() {
       :avg-daily-hours="avgDailyHours"
       :search-query="searchQuery"
       :is-exporting="isExporting"
+      :is-importing="isImporting"
+      :last-saved-at="lastSavedAt"
       @update:month="workbook.month = $event"
       @update:break-hours="workbook.breakHours = $event"
       @update:search-query="searchQuery = $event"
       @add-record="addWorkRecord"
       @request-reset="isResetDialogOpen = true"
       @export-excel="exportExcel"
+      @import-excel="importExcelFile"
     />
 
     <SheetTabs

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialTimesheet } from '../../data/initialTimesheet'
 import { buildExcelWorkbook } from '../excelExport'
+import { parseExcelBufferToTimesheet } from '../excelImport'
 import { calcAutoHours, getEffectiveHours, parseTimeToMinutes } from '../timeCalc'
 
 describe('timeCalc', () => {
@@ -52,5 +53,20 @@ describe('excelExport', () => {
 
     const buffer = await wb.xlsx.writeBuffer()
     expect(buffer.byteLength).toBeGreaterThan(5000)
+  })
+
+  it('round-trips exported Excel buffer back into TimesheetWorkbook', async () => {
+    const initial = createInitialTimesheet()
+    const wb = buildExcelWorkbook(initial)
+    const buffer = (await wb.xlsx.writeBuffer()) as ArrayBuffer
+
+    const imported = await parseExcelBufferToTimesheet(buffer)
+    expect(imported.month).toBe(11)
+    expect(imported.records).toHaveLength(initial.records.length)
+    expect(imported.records[0].date).toBe('2026-11-10')
+    expect(imported.records[0].startTime).toBe('09:30')
+    expect(imported.records[0].endTime).toBe('20:30')
+    expect(imported.reviewItems).toHaveLength(initial.reviewItems.length)
+    expect(imported.extraReviewItems).toHaveLength(initial.extraReviewItems.length)
   })
 })

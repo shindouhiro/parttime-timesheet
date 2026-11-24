@@ -28,9 +28,16 @@ export function useTimesheet() {
   const activeTab = shallowRef<SheetTabId>('sheet1')
   const searchQuery = shallowRef('')
   const isExporting = shallowRef(false)
+  const isImporting = shallowRef(false)
+  const lastSavedAt = shallowRef('')
   const toastMessage = shallowRef('')
   const toastType = shallowRef<'success' | 'error'>('success')
   let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+  function formatNowTime(): string {
+    const now = new Date()
+    return now.toTimeString().slice(0, 8)
+  }
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
     toastMessage.value = message
@@ -46,6 +53,7 @@ export function useTimesheet() {
     (val) => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
+        lastSavedAt.value = formatNowTime()
       } catch {
         // Ignore storage quota errors
       }
@@ -220,11 +228,30 @@ export function useTimesheet() {
     }
   }
 
+  async function importExcelFile(file: File) {
+    if (isImporting.value) return
+    isImporting.value = true
+    try {
+      const buffer = await file.arrayBuffer()
+      const { parseExcelBufferToTimesheet } = await import('../utils/excelImport')
+      workbook.value = await parseExcelBufferToTimesheet(buffer)
+      searchQuery.value = ''
+      showToast(`已导入 ${file.name}`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '导入失败'
+      showToast(`导入失败：${msg}`, 'error')
+    } finally {
+      isImporting.value = false
+    }
+  }
+
   return {
     workbook,
     activeTab,
     searchQuery,
     isExporting,
+    isImporting,
+    lastSavedAt,
     toastMessage,
     toastType,
     totalHours,
@@ -243,5 +270,6 @@ export function useTimesheet() {
     removeReviewItem,
     resetToInitial,
     exportExcel,
+    importExcelFile,
   }
 }
